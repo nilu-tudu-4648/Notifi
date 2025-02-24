@@ -12,7 +12,7 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 import com.cogniant.Notifi.IconManagerPackage
-
+import com.cogniant.Notifi.UninstallProtectionPackage
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
@@ -27,6 +27,8 @@ class MainApplication : Application(), ReactApplication {
             // packages.add(new MyReactNativePackage());
              packages.add(CallRecorderPackage())
              packages.add(IconManagerPackage())
+             packages.add(CallStatePackage())
+             packages.add(UninstallProtectionPackage())
             return packages
           }
 

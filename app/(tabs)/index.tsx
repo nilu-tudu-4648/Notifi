@@ -1,22 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import LocationTracker from '../LocationTracker'
-import CallDetaction from '../CallDetaction'
-import CallLogsScreen from '../CallLogsScreen'
-import Contacts from '../Contacts'
-import CallRecordingScreen from '../CallRecordingScreen'
-import IconToggle from '../IconToggle'
-// import UninstallProtectionSetup from '../UninstallProtectionSetup'
+import CallLogsScreen from './CallLogsScreen'
+import Contacts from './Contacts'
+import IconToggle from './IconToggle'
+import UninstallProtection from './UninstallProtection'
+import AutoCallRecording from './AutoCallRecording'
 const index = () => {
   return (
     <View style={{ flex: 1 }}>
-     {/* <LocationTracker /> */}
-     {/* <CallDetaction /> */}
-     {/* <CallRecordingScreen /> */}
-     {/* <CallLogsScreen /> working */}
+     <LocationTracker />
+     {/* <CallLogsScreen /> */}
      {/* <Contacts />  working */}
-     <IconToggle />
-     {/* <UninstallProtectionSetup /> */}
+     {/* <IconToggle /> working */}
+     {/* <AutoCallRecording /> working but voice not working */}
+     {/* <UninstallProtection /> */}
     </View>
   )
 }
