@@ -1,139 +1,84 @@
 package com.cogniant.Notifi
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import com.facebook.react.bridge.*
-import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.facebook.react.module.annotations.ReactModule
+import android.media.MediaRecorder
+import android.os.Environment
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReactContextBaseJavaModule
+import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.WritableArray
+import com.facebook.react.bridge.WritableNativeArray
+import java.io.File
 
-@ReactModule(name = "CallRecorder")
-class CallRecorderModule(private val reactContext: ReactApplicationContext) : 
-    ReactContextBaseJavaModule(reactContext) {
-
-    private var isRecording = false
+class CallRecorderModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+    private var recorder: MediaRecorder? = null
+    private var outputFile: String? = null
 
     override fun getName(): String = "CallRecorder"
-
-    override fun getConstants(): Map<String, Any> {
-        return mapOf(
-            "RECORDING_STARTED" to "recordingStarted",
-            "RECORDING_STOPPED" to "recordingStopped",
-            "RECORDING_ERROR" to "recordingError"
-        )
-    }
-
-    @ReactMethod
-    fun addListener(eventName: String) {
-        // Required for React Native event emitter
-    }
-
-    @ReactMethod
-    fun removeListeners(count: Int) {
-        // Required for React Native event emitter
-    }
 
     @ReactMethod
     fun startRecording(promise: Promise) {
         try {
-            if (checkPermissions()) {
-                val intent = Intent(reactContext, CallRecorderService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    reactContext.startForegroundService(intent)
-                } else {
-                    reactContext.startService(intent)
-                }
-                isRecording = true
-                sendEvent("recordingStarted", Arguments.createMap().apply {
-                    putBoolean("success", true)
-                })
-                promise.resolve(true)
-            } else {
-                promise.reject("PERMISSION_DENIED", "Required permissions not granted")
+            val outputDir = reactApplicationContext.getExternalFilesDir("recordings")
+            outputFile = "${outputDir?.absolutePath}/call_${System.currentTimeMillis()}.mp3"
+            recorder = MediaRecorder().apply {
+                setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setOutputFile(outputFile)
+                prepare()
+                start()
             }
+            promise.resolve("Recording started")
         } catch (e: Exception) {
-            sendEvent("recordingError", Arguments.createMap().apply {
-                putString("error", e.message ?: "Unknown error")
-            })
-            promise.reject("ERROR", e.message)
+            promise.reject("RECORDING_ERROR", e.message)
         }
     }
 
     @ReactMethod
     fun stopRecording(promise: Promise) {
         try {
-            val intent = Intent(reactContext, CallRecorderService::class.java)
-            reactContext.stopService(intent)
-            isRecording = false
-            sendEvent("recordingStopped", Arguments.createMap().apply {
-                putBoolean("success", true)
-            })
-            promise.resolve(true)
+            recorder?.apply {
+                stop()
+                release()
+            }
+            recorder = null
+            promise.resolve(outputFile)
         } catch (e: Exception) {
-            sendEvent("recordingError", Arguments.createMap().apply {
-                putString("error", e.message ?: "Unknown error")
-            })
-            promise.reject("ERROR", e.message)
+            promise.reject("STOP_ERROR", e.message)
         }
     }
 
     @ReactMethod
-    fun checkPermissions(promise: Promise) {
-        promise.resolve(checkPermissions())
-    }
-
-    private fun checkPermissions(): Boolean {
-        val permissions = arrayOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        )
-
-        return permissions.all {
-            ContextCompat.checkSelfPermission(reactContext, it) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    @ReactMethod
-    fun requestPermissions(promise: Promise) {
+    fun getAllRecordings(promise: Promise) {
         try {
-            val permissions = arrayOf(
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            )
+            val externalStorage = Environment.getExternalStorageDirectory()
+            val fileList: WritableArray = WritableNativeArray()
 
-            ActivityCompat.requestPermissions(
-                reactContext.currentActivity!!,
-                permissions,
-                1
-            )
-            promise.resolve(true)
+            // Recursively search for .mp3 files in external storage
+            searchForRecordings(externalStorage, fileList)
+
+            if (fileList.size() > 0) {
+                promise.resolve(fileList)
+            } else {
+                promise.resolve(WritableNativeArray()) // Empty array if no files found
+            }
         } catch (e: Exception) {
-            promise.reject("ERROR", e.message)
+            promise.reject("FILE_ERROR", "Failed to fetch recordings: ${e.message}")
         }
     }
 
-    private fun sendEvent(eventName: String, params: WritableMap?) {
-        try {
-            reactContext
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                ?.emit(eventName, params)
-        } catch (e: Exception) {
-            // Handle error if event emission fails
-        }
-    }
-
-    override fun onCatalystInstanceDestroy() {
-        super.onCatalystInstanceDestroy()
-        if (isRecording) {
-            val intent = Intent(reactContext, CallRecorderService::class.java)
-            reactContext.stopService(intent)
+    // Helper function to recursively search directories
+    private fun searchForRecordings(directory: File, fileList: WritableArray) {
+        directory.listFiles()?.forEach { file ->
+            if (file.isDirectory) {
+                // Skip restricted directories (e.g., Android/data) if not accessible
+                if (file.canRead()) {
+                    searchForRecordings(file, fileList)
+                }
+            } else if (file.extension.lowercase() == "mp3") {
+                fileList.pushString(file.absolutePath)
+            }
         }
     }
 }

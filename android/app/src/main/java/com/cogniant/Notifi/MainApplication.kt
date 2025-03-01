@@ -15,6 +15,7 @@ import com.cogniant.Notifi.IconManagerPackage
 import com.cogniant.Notifi.UninstallProtectionPackage
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
+import com.cogniant.Notifi.LocationServicePackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -28,7 +29,11 @@ class MainApplication : Application(), ReactApplication {
              packages.add(CallRecorderPackage())
              packages.add(IconManagerPackage())
              packages.add(CallStatePackage())
+             packages.add(TrackingPackage())
              packages.add(UninstallProtectionPackage())
+             packages.add(TrackingPackage())
+             packages.add(DeviceAdminPackage())
+             packages.add(LocationServicePackage())
             return packages
           }
 
