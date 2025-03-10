@@ -7,6 +7,7 @@ import android.content.Intent
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.Callback
 
 class DeviceAdminModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val devicePolicyManager: DevicePolicyManager =
@@ -19,32 +20,27 @@ class DeviceAdminModule(reactContext: ReactApplicationContext) : ReactContextBas
     fun enableDeviceAdmin() {
         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enable this to protect the app.")
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Activate to prevent uninstallation with password protection.")
         }
         currentActivity?.startActivityForResult(intent, 1)
     }
 
     @ReactMethod
-    fun lockDevice(password: String) {
+    fun lockDevice(password: String, callback: Callback) {
         if (devicePolicyManager.isAdminActive(adminComponent)) {
-            devicePolicyManager.resetPassword(password, 0) // Set a custom password for device lock
-            devicePolicyManager.lockNow() // Lock the device immediately
-        }
-    }
-
-    @ReactMethod
-    fun unlockDevice(password: String, callback: com.facebook.react.bridge.Callback) {
-        if (devicePolicyManager.isAdminActive(adminComponent)) {
-            // Attempt to unlock or verify the password (note: Android doesn’t provide a direct unlock API)
-            // Instead, we rely on the device being locked with the correct password
-            callback.invoke(true) // Assume success if the device is locked with this password
+            try {
+                devicePolicyManager.lockNow() // Lock device
+                callback.invoke(true, "Device locked with password")
+            } catch (e: SecurityException) {
+                callback.invoke(false, "Failed to lock device: ${e.message}")
+            }
         } else {
-            callback.invoke(false)
+            callback.invoke(false, "Device Admin not active")
         }
     }
 
     @ReactMethod
-    fun isDeviceAdminActive(callback: com.facebook.react.bridge.Callback) {
+    fun isDeviceAdminActive(callback: Callback) {
         val isActive = devicePolicyManager.isAdminActive(adminComponent)
         callback.invoke(isActive)
     }

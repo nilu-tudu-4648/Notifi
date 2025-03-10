@@ -8,6 +8,11 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import '../components/backgroundLocationTask';
+
+import { AppRegistry } from 'react-native';
+import { TaskManager } from 'expo-task-manager';
+AppRegistry.registerHeadlessTask('BackgroundLocationTask', () => backgroundFetchTask);
+AppRegistry.registerComponent('Notifi', () => LocationTracker);
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
